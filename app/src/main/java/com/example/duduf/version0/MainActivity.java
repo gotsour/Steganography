@@ -4,7 +4,6 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Color;
 import android.net.Uri;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
@@ -15,265 +14,156 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.math.BigInteger;
-import java.nio.ByteBuffer;
-
 public class MainActivity extends AppCompatActivity {
-    private static int RESULT_LOAD_IMG = 1;
+    private static int LOAD_IMG_MODELE = 1;
+    private static int LOAD_IMG_SECRET = 2;
     ImageView largeImage;
     String imgDecodableString;
     long tailleMaxImage;
-    Bitmap bm;
+    Bitmap imageCryptee;
     int gallerieWidth;
     int gallerieHeight;
     int sizeBits;
+    Bitmap nouvelleImage;
+    Bitmap imageModel;
+    Decryptage d;
+    TextView tw;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         setContentView(R.layout.activity_main);
         Bitmap b = BitmapFactory.decodeResource(getResources(), R.drawable.image_1);
-        bm = b.copy(Bitmap.Config.ARGB_8888, true);
-        TextView tw=(TextView)findViewById(R.id.textView);
-
-        tailleMaxImage=(bm.getWidth()*bm.getHeight())/10*8;
-        tw.setText("Nombre de bits pouvant etre altéré : "+tailleMaxImage +" \n nomnbre max de pixel :"
-                +tailleMaxImage/24 + " \n"+b.getWidth()+"/"+b.getHeight());
-
-
-
+        //bm = b.copy(Bitmap.Config.ARGB_8888, true);
+        tw = (TextView) findViewById(R.id.textView);
         largeImage = (ImageView) findViewById(R.id.imageView);
-        largeImage.setImageBitmap(bm);
+
+
         /***********************************************************************
-         ******* OUVERTURE GALERIE + LANCEMENT CRYPTAGE ********************
+         ******* OUVERTURE GALERIE AJOUT MODEL ********************
          ***********************************************************************/
-        Button button=(Button)findViewById(R.id.button);
-        button.setOnClickListener(new View.OnClickListener() {
+        Button buttonModel = (Button) findViewById(R.id.buttonModele);
+        buttonModel.setOnClickListener(new View.OnClickListener() {
 
             public void onClick(View view) {
                 // Create intent to Open Image applications like Gallery, Google Photos
-                Intent galleryIntent = new Intent(Intent.ACTION_PICK,
-                        android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                Intent galleryIntent = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
                 // Start the Intent
-                startActivityForResult(galleryIntent, RESULT_LOAD_IMG);
+                startActivityForResult(galleryIntent, LOAD_IMG_MODELE);
             }
 
         });
-
-
         /***********************************************************************
-        ******* DECRYPTAGE ET CREATION DE LA NOUVELLE IMAGE ********************
+         ******* OUVERTURE GALERIE AJOUT SECRET ********************
          ***********************************************************************/
-        Button button2=(Button)findViewById(R.id.button2);
-        button2.setOnClickListener(new View.OnClickListener() {
+
+        Button buttonSecret = (Button) findViewById(R.id.buttonSecret);
+        buttonSecret.setOnClickListener(new View.OnClickListener() {
+
             public void onClick(View view) {
-                //decryptage de l'image
-               int cpt=0;
-                byte tabBits[]=new byte[sizeBits];
-
-                for(int i=0;i<bm.getWidth() && cpt<sizeBits;i++){
-                    for(int j=0;j<bm.getHeight() &&cpt<sizeBits;j++){
-                        if((i*bm.getWidth()+j)%10==0 &&cpt+8<sizeBits) {
-                            //recuperation du pixel
-                            //System.out.println("decryptage du pixel : "+i+"/"+j);
-                            int pixel = bm.getPixel(i, j);
-                            tabBits=getDataDecrypt(tabBits,Color.red(pixel),cpt);
-                            cpt+=2;
-                            tabBits=getDataDecrypt(tabBits,Color.green(pixel),cpt);
-                            cpt+=2;
-                            tabBits=getDataDecrypt(tabBits,Color.blue(pixel),cpt);
-                            cpt+=2;
-                            tabBits=getDataDecrypt(tabBits,Color.alpha(pixel),cpt);
-                            cpt+=2;
-                        }
-                    }
-                }
-
-               /* for(int i=0;i<tabBits.length;i++){
-                    System.out.print(" "+tabBits[i]);
-                }
-                System.out.println("");*/
-
-                //creation de la nouvelle image
-               Bitmap nouvelleImage = Bitmap.createBitmap(gallerieWidth, gallerieHeight, Bitmap.Config.ARGB_8888);
-
-                for(int i=0;i<gallerieWidth && cpt<sizeBits;i++){
-                    for(int j=0;j<gallerieHeight && cpt<sizeBits;j++) {
-                        if(cpt+32<sizeBits) {
-                            int r =  byteToEntier(tabBits,cpt);
-                            cpt += 8;
-                            int g = byteToEntier(tabBits,cpt);
-                            cpt += 8;
-                            int b = byteToEntier(tabBits,cpt);
-                            cpt += 8;
-                            int a = byteToEntier(tabBits,cpt);
-                            cpt += 8;
-                            System.out.println("creation pixel :rgba"+r+" "+g+" "+b+" "+a);
-                            nouvelleImage.setPixel(i, j, Color.argb(a, r, g, b));
-                        }
-                    }
-                }
-               /* Bitmap nouvelleImage = Bitmap.createBitmap(2000, 2000, Bitmap.Config.ARGB_8888);
-                for(int i=0;i<50;i++){
-                    for(int j=0;j<50;j++) {
-                        nouvelleImage.setPixel(i, j, Color.GREEN);
-                    }
-                }*/
-                largeImage.setImageBitmap(nouvelleImage);
+                // Create intent to Open Image applications like Gallery, Google Photos
+                Intent galleryIntent = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                // Start the Intent
+                startActivityForResult(galleryIntent, LOAD_IMG_SECRET);
             }
+
         });
+
+        //bouton pour le decryptage
+        Button button2 = (Button) findViewById(R.id.button2);
+        button2.setOnClickListener(onClickDecrypt);
+
     }
 
+    /***********************************************************************
+     * ****** DECRYPTAGE ET CREATION DE LA NOUVELLE IMAGE ********************
+     ***********************************************************************/
 
-    /***************************************************************************
-     * **************** RETOUR DE LA GALLERIE : LANCEMENT CRYPTAGE *************
-     ***************************************************************************/
+    public View.OnClickListener onClickDecrypt = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            d = new Decryptage(sizeBits, imageCryptee, gallerieWidth, gallerieHeight);
+            new Thread(new Runnable() {
+                public void run() {
+                    final Bitmap bitmap = d.calcul();
+                    largeImage.post(new Runnable() {
+                        public void run() {
+                            largeImage.setImageBitmap(bitmap);
+                            tw.setText(" largeur : " + bitmap.getWidth() + " hauteur : " + bitmap.getHeight());
+                        }
+                    });
+                }
+            }).start();
+        }
+    };
+
+
+
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-       // try {
-            // When an Image is picked
-            if (requestCode == RESULT_LOAD_IMG && resultCode == RESULT_OK
-                    && null != data) {
-                // Get the Image from data
-                Uri selectedImage = data.getData();
-                String[] filePathColumn = { MediaStore.Images.Media.DATA };
-                // Get the cursor
-                Cursor cursor = getContentResolver().query(selectedImage,filePathColumn, null, null, null);
-                // Move to first row
-                cursor.moveToFirst();
 
-                int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
-                imgDecodableString = cursor.getString(columnIndex);
-                cursor.close();
-                ImageView imgView = (ImageView) findViewById(R.id.imageView);
+        /***************************************************************************
+         * **************** RETOUR DE LA GALLERIE : LANCEMENT CRYPTAGE *************
+         ***************************************************************************/
 
-                Bitmap imageGallerie=BitmapFactory.decodeFile(imgDecodableString);
-                if(imageGallerie.getHeight()*imageGallerie.getWidth()>tailleMaxImage/32){
-                    Toast.makeText(this, "Image trop lourde pour etre achée dans l'image actuelle",
-                            Toast.LENGTH_LONG).show();
-                }
-                else{
-                    //creation tableau des bits à cacher
-                    byte tabBits[]=new byte[imageGallerie.getWidth()*imageGallerie.getHeight()*32];
-                    gallerieHeight=imageGallerie.getHeight();
-                    gallerieWidth=imageGallerie.getWidth();
-                    sizeBits=tabBits.length;
-                    int cpt=0;
-                    for(int i=0;i<imageGallerie.getWidth();i++) {
-                        for (int j = 0; j < imageGallerie.getHeight(); j++) {
-                            int pixel = imageGallerie.getPixel(i, j);
-                            tabBits=getData(tabBits,Color.red(pixel),cpt);
-                            cpt+=8;
-                            tabBits=getData(tabBits,Color.green(pixel),cpt);
-                            cpt+=8;
-                            tabBits=getData(tabBits,Color.blue(pixel),cpt);
-                            cpt+=8;
-                            tabBits=getData(tabBits,Color.alpha(pixel),cpt);
-                            cpt+=8;
-                        }
-                    }
-                    cpt=0;
+        if (requestCode == LOAD_IMG_SECRET && resultCode == RESULT_OK && null != data) {
+            // Get the Image from data
+            Uri selectedImage = data.getData();
+            String[] filePathColumn = {MediaStore.Images.Media.DATA};
+            // Get the cursor
+            Cursor cursor = getContentResolver().query(selectedImage, filePathColumn, null, null, null);
+            // Move to first row
+            cursor.moveToFirst();
 
-                    ///ajout des bits dans l'image originale
-                    for(int i=0;i<bm.getWidth() && cpt<tabBits.length;i++){
+            int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
+            imgDecodableString = cursor.getString(columnIndex);
+            cursor.close();
 
-                        for(int j=0;j<bm.getHeight()&& cpt<tabBits.length;j++){
-                            if((i*bm.getWidth()+j)%10==0 &&cpt+8<tabBits.length) {
-                                //recuperation du pixel
-                                int pixel = bm.getPixel(i, j);
+            Bitmap imageGallerie = BitmapFactory.decodeFile(imgDecodableString);
+            gallerieWidth = imageGallerie.getWidth();
+            gallerieHeight = imageGallerie.getHeight();
 
-                                 int r=Integer.valueOf(checkLength(Integer.toString(Color.red(pixel),2))+tabBits[cpt]+tabBits[cpt+1],2);
-                                cpt+=2;
-                                int g=Integer.valueOf(checkLength(Integer.toString(Color.green(pixel),2))+tabBits[cpt]+tabBits[cpt+1],2);
-                                cpt+=2;
-                                int b=Integer.valueOf(checkLength(Integer.toString(Color.blue(pixel),2))+tabBits[cpt]+tabBits[cpt+1],2);
-                                cpt+=2;
-                                int a=Integer.valueOf(checkLength(Integer.toString(Color.alpha(pixel),2))+tabBits[cpt]+tabBits[cpt+1],2);
-                                cpt+=2;
-
-                                //modification du pixel
-                                bm.setPixel(i,j, Color.argb(a,r,g,b));
-                            }
-                        }
-                        }
-                    imgView.setImageBitmap(bm);
-                }
-
-
-
+            if (imageGallerie.getHeight() * imageGallerie.getWidth() > tailleMaxImage) {
+                tw.setText("Image trop lourde pour etre achée dans l'image actuelle");
+                Toast.makeText(this, "Image trop lourde pour etre achée dans l'image actuelle", Toast.LENGTH_LONG).show();
             } else {
-                Toast.makeText(this, "You haven't picked Image",
-                        Toast.LENGTH_LONG).show();
+                //sizeBits=
+                Cryptage c = new Cryptage(imageModel, imageGallerie);
+                imageCryptee=c.calcul();
+                sizeBits = c.getSizeBits();
+                largeImage.setImageBitmap(imageCryptee);
             }
-       /* } catch (Exception e) {
-            Toast.makeText(this, "Something went wrong", Toast.LENGTH_LONG)
-                    .show();
-        }*/
-
-    }
-    public byte[] getData(byte tab[],int entier, int cpt){
-        String binaire=Integer.toString(entier,2);
-        System.out.println("binaire :"+binaire);
-        //prend les 8 bits
-        for (int i = binaire.length(); i >0; i--) {  // assuming a 32 bit int
-            tab[cpt] =Byte.parseByte(binaire.substring(i-1,i));
-           System.out.print(+Byte.parseByte(binaire.substring(i-1,i)));
-            cpt++;
+        } else {
+            Toast.makeText(this, "You haven't picked Image",
+                    Toast.LENGTH_LONG).show();
         }
-        //si la chaine et indefirieur à 8 on met des 0
-        for (int i = 8-binaire.length(); i >0; i--) {  // assuming a 32 bit int
-            tab[cpt] =0;
-            System.out.print("0");
-            cpt++;
-        }
-        return tab;
-    }
 
-    //prend les 2 dernier bits
-    public byte[] getDataDecrypt(byte tab[],int entier, int cpt){
-        String binaire=Integer.toString(entier,2);
-        //prend les 2 bit a droite
-        for (int i = binaire.length(); i >6; i--) {  // assuming a 32 bit int
-            System.out.println("decryptage entier : "+entier+" binaire: "+binaire+" sortie : "+Byte.parseByte(binaire.substring(i-1,i)));
-            tab[cpt] =Byte.parseByte(binaire.substring(i-1,i));
-            System.out.print(+Byte.parseByte(binaire.substring(i-1,i)));
-            cpt++;
-        }
-        return tab;
-    }
+        /***************************************************************************
+         * **************** RETOUR DE LA GALLERIE : AJOUT IMG MODEL *************
+         ***************************************************************************/
 
-    public String checkLength(String chaine){
-        String sortie=chaine;
-        for (int i = 8-chaine.length(); i >0; i--) {  // assuming a 32 bit int
-            sortie="0"+sortie;
-        }
-        return sortie.substring(0,6);
-    }
+        if (requestCode == LOAD_IMG_MODELE && resultCode == RESULT_OK && null != data) {
+            // Get the Image from data
+            Uri selectedImage = data.getData();
+            String[] filePathColumn = {MediaStore.Images.Media.DATA};
+            // Get the cursor
+            Cursor cursor = getContentResolver().query(selectedImage, filePathColumn, null, null, null);
+            // Move to first row
+            cursor.moveToFirst();
 
-    public byte[] decodeData(String chaine, byte tab[],int cpt){
-        String sortie=chaine;
-        for (int i = 8-chaine.length(); i >0; i--) {  // assuming a 32 bit int
-            sortie="0"+sortie;
+            int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
+            imgDecodableString = cursor.getString(columnIndex);
+            cursor.close();
+           // BitmapFactory.Options options = new BitmapFactory.Options();
+           // options.inJustDecodeBounds = true;
+            Bitmap b = BitmapFactory.decodeFile(imgDecodableString);
+            imageModel = b.copy(Bitmap.Config.ARGB_8888, true);
+            largeImage.setImageBitmap(imageModel);
+            tailleMaxImage=imageModel.getWidth()*imageModel.getHeight()/30;
+            tw.setText("Dimension : hauteur ="+imageModel.getWidth()+" largeur ="+imageModel.getHeight()+" \n Taille max pixel :");
+
 
         }
-        //tab[cpt]=sortie.substring(6,8)
-        //return sortie.substring(6,8);
-        return tab;
     }
 
-    public int byteToEntier(byte[] tab,int indice){
-        String chaine="";
-        for(int i=0;i<8;i++){
-            chaine=Byte.toString(tab[indice+i])+chaine;
-        }
-        System.out.println("chaine decyptée : "+chaine);
-        return Integer.valueOf(chaine,2);
-    }
 }
-
-/*System.out.println(Byte.parseByte("01100110", 2));
-102*/
-      /*  int r = (argb)&0xFF;
-        int g = (argb>>8)&0xFF;
-        int b = (argb>>16)&0xFF;
-        int a = (argb>>24)&0xFF;*/
